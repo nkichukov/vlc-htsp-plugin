@@ -220,7 +220,7 @@ bool GetChannels(services_discovery_t *sd)
             channels[cid].url = oss.str();
 
             channelIds.push_back(cid);
-            
+
             if(user)
                 free(user);
             if(pass)
@@ -256,7 +256,7 @@ bool GetChannels(services_discovery_t *sd)
 
         input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
 
-        ch.item->i_type = ITEM_TYPE_NET;
+        ch.item->i_type = ITEM_TYPE_STREAM;
         for(std::string tag: ch.tags)
             services_discovery_AddItem(sd, ch.item, tag.c_str());
 

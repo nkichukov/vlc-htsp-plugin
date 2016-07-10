@@ -369,7 +369,7 @@ bool parseURL(demux_t *demux)
         return false;
 
     vlc_url_t *url = &(sys->url);
-    vlc_UrlParse(url, path, 0);
+    vlc_UrlParse(url, path);
 
     if(url->psz_host == 0 || *url->psz_host == 0)
         return false;
