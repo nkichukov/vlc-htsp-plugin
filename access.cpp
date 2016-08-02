@@ -363,8 +363,7 @@ bool SubscribeHTSP(demux_t *demux)
 bool parseURL(demux_t *demux)
 {
     demux_sys_t *sys = demux->p_sys;
-    char *path;
-    asprintf( &path, "%s://%s", demux->psz_access, demux->psz_location );
+    const char *path = demux->psz_location;
 
     if(path == 0 || *path == 0)
         return false;
