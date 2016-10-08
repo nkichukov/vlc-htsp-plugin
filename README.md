@@ -1,3 +1,5 @@
+**[repository not actively maintained !]**
+
 ## Install
 
 Make sure you have the lastest VLC 3.0 development libraries installed together with C++ development tools for your system. 
