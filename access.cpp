@@ -362,16 +362,27 @@ bool SubscribeHTSP(demux_t *demux)
 bool parseURL(demux_t *demux)
 {
     demux_sys_t *sys = demux->p_sys;
-    const char *path = demux->psz_location;
+    //add "htsp://" to the path... vlc_UrlParse expects the protocol to be  there
+    std::string pathWithProtocol(demux->psz_location);
+    pathWithProtocol = "htsp://" + pathWithProtocol;
 
-    if(path == 0 || *path == 0)
+    const char *path = pathWithProtocol.c_str();
+
+    msg_Dbg(demux, path);
+    //const char *path = demux->psz_location;
+
+    if(path == 0 || *path == 0) {
+         msg_Dbg(demux, "ERROR 1");
         return false;
+    }
 
     vlc_url_t *url = &(sys->url);
     vlc_UrlParse(url, path);
 
-    if(url->psz_host == 0 || *url->psz_host == 0)
+    if(url->psz_host == 0 || *url->psz_host == 0) {
+        msg_Dbg(demux, "ERROR 2");
         return false;
+    }
     else
         sys->host = url->psz_host;
 
