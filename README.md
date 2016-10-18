@@ -1,4 +1,4 @@
-**[repository not actively maintained !]**
+This is a fork ofd ThomasLeister's VLC3.0 version that works with current nightlies [As of 15/10/2016]
 
 ## Install
 
