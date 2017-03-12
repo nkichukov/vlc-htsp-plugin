@@ -249,20 +249,27 @@ bool GetChannels(services_discovery_t *sd)
         tmp_channel ch = channels[channelIds.front()];
         channelIds.pop_front();
 
+        msg_Info(sd, "adding channel...");
+
         ch.item = input_item_New(ch.url.c_str(), ch.name.c_str());
+
+        msg_Info(sd, ch.name.c_str());
         if(unlikely(ch.item == 0))
             return false;
 
-        input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
+        //This line causes error "no suitable access modeule for `" - we don't need artwork so disable it
+        //input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
 
         ch.item->i_type = ITEM_TYPE_STREAM;
         for(std::string tag: ch.tags)
             services_discovery_AddItem(sd, ch.item, tag.c_str());
 
-        services_discovery_AddItem(sd, ch.item, "All Channels");
 
+        services_discovery_AddItem(sd, ch.item, "All Channels");
+        
 
         sys->channelMap[ch.cid] = ch;
+        
     }
 
     return true;
