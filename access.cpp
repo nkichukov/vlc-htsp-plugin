@@ -235,7 +235,7 @@ bool ConnectHTSP(demux_t *demux)
 
     bool res = ReadSuccess(demux, sys, map.makeMsg(), "auth");
     if(res)
-        msg_Info(demux, "Successfully authenticated!");
+            msg_Info(demux, "Successfully authenticated!");
     else
         msg_Err(demux, "Authentication failed!");
 
@@ -254,7 +254,7 @@ void PopulateEPG(demux_t *demux)
     if(!res.isValid())
         return;
 
-    sys->epg = vlc_epg_New(0);
+    sys->epg = vlc_epg_New(0, sys->channelId);
 
     std::shared_ptr<HtsList> events = res.getRoot()->getList("events");
     for(uint32_t i = 0; i < events->count(); i++)
@@ -271,11 +271,12 @@ void PopulateEPG(demux_t *demux)
         int64_t stop = event->getS64("stop");
         int duration = stop - start;
 
-#if CHECK_VLC_VERSION(2,1)
-        vlc_epg_AddEvent(sys->epg, start, duration, event->getStr("title").c_str(), event->getStr("summary").c_str(), event->getStr("description").c_str(), 0);
-#else
-        vlc_epg_AddEvent(sys->epg, start, duration, event->getStr("title").c_str(), event->getStr("summary").c_str(), event->getStr("description").c_str());
-#endif
+        vlc_epg_event_t *epgEvent = vlc_epg_event_New(1, start, duration);
+        epgEvent->psz_name = strdup(event->getStr("title").c_str());
+        epgEvent->psz_short_description = strdup(event->getStr("summary").c_str());
+        epgEvent->psz_description = strdup(event->getStr("description").c_str());
+      
+        vlc_epg_AddEvent(sys->epg, epgEvent);
 
         int64_t now = time(0);
         if(now >= start && now < stop)
@@ -434,20 +435,26 @@ int OpenHTSP(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
+   msg_Dbg(demux, "one");
     if(sys->channelId == 0)
     {
         msg_Err(demux, "HTSP ChannelID 0 is invalid!");
         return VLC_EGENERIC;
     }
 
+    msg_Dbg(demux, "two");
     PopulateEPG(demux);
 
+    msg_Dbg(demux, "three");
     if(!SubscribeHTSP(demux))
-    {
+    {   
+        msg_Dbg(demux, "four");
         msg_Dbg(demux, "Subscribing to channel failed");
         delete sys;
         return VLC_EGENERIC;
     }
+
+    msg_Dbg(demux, "five");
 
     if(vlc_clone(&sys->thread, RunHTSP, demux, VLC_THREAD_PRIORITY_INPUT))
     {
