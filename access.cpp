@@ -292,7 +292,7 @@ bool SubscribeHTSP(demux_t *demux)
     map.setData("method", "subscribe");
     map.setData("channelId", sys->channelId);
     map.setData("subscriptionId", 1);
-    map.setData("queueDepth", 5*1024*1024);
+    map.setData("queueDepth", 10*1024*1024);
     map.setData("timeshiftPeriod", (uint32_t)~0);
     map.setData("normts", 1);
 
