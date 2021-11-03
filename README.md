@@ -1,4 +1,4 @@
-This is a fork of ThomasLeister's VLC3.0 version that works with current nightlies [As of 15/10/2016]
+This is a fork of TRPB/vlc-htsp-plugin, which is a fork of ThomasLeister's VLC3.0 version. It works fine with the latest stable VLC version 3.0.16 on GNU/Gentoo Linux.
 
 ## Install
 
@@ -10,19 +10,16 @@ Install dependencies on Fedora Linux:
 sudo dnf install gcc-c++ vlc-devel libatomic
 ```
 
-Download, configure, make and install plugin file
+Clone this repository and build the project
 
 ```
-wget https://github.com/ThomasLeister/vlc-htsp-plugin/archive/master.zip
-unzip master.zip
-cd vlc-htsp-plugin-master
+cd vlc-htsp-plugin
 make
-sudo cp libhtsp_plugin.so /lib64/vlc/plugins/access/
+sudo cp libhtsp_plugin.so /usr/lib64/vlc/plugins/access/
 ```
 
 Restart VLC, open the settings in advanced mode and search for "HTSP". Then enter your TVHeadend server's hostname and your login credentials. 
 
-URL format is htsp://{username{:password}@}server{:port}/channelId
 The Service Discovery module is listed under LAN and grabs the channel list from TVH.
 
 ## Tips

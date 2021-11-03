@@ -249,23 +249,21 @@ bool GetChannels(services_discovery_t *sd)
         tmp_channel ch = channels[channelIds.front()];
         channelIds.pop_front();
 
-        msg_Info(sd, "adding channel...");
+        msg_Dbg(sd, "Adding channel %s\n", ch.name.c_str());
 
         ch.item = input_item_New(ch.url.c_str(), ch.name.c_str());
 
-        msg_Info(sd, ch.name.c_str());
         if(unlikely(ch.item == 0))
             return false;
 
-        //This line causes error "no suitable access modeule for `" - we don't need artwork so disable it
-        //input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
+        input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
 
         ch.item->i_type = ITEM_TYPE_STREAM;
         for(std::string tag: ch.tags)
-            services_discovery_AddItem(sd, ch.item, tag.c_str());
+            services_discovery_AddItemCat(sd, ch.item, tag.c_str());
 
 
-        services_discovery_AddItem(sd, ch.item, "All Channels");
+        services_discovery_AddItemCat(sd, ch.item, "All Channels");
         
 
         sys->channelMap[ch.cid] = ch;
@@ -309,6 +307,7 @@ void * RunSD(void *obj)
 int OpenSD(vlc_object_t *obj)
 {
     services_discovery_t *sd = (services_discovery_t *)obj;
+    sd->description = SD_DESC;
     services_discovery_sys_t *sys = new services_discovery_sys_t;
     if(unlikely(sys == NULL))
         return VLC_ENOMEM;

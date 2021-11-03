@@ -36,7 +36,7 @@ install-strip:
 	$(MAKE) install INSTALL="$(INSTALL) -s"
 
 uninstall:
-	rm -f "$(plugindir)/codec/libhtsp_plugin.so"
+	rm -f "$(plugindir)/access/libhtsp_plugin.so"
 
 clean:
 	rm -f -- libhtsp_plugin.{dll,so} *.o

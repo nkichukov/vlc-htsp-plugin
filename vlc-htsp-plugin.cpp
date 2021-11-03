@@ -27,7 +27,7 @@
 #include <vlc_services_discovery.h>
 
 
-VLC_SD_PROBE_HELPER( "htsp", "Tvheadend HTSP", SD_CAT_LAN )
+VLC_SD_PROBE_HELPER( "htsp", SD_DESC, SD_CAT_LAN )
 
 vlc_module_begin ()
     set_shortname( "HTSP Protocol" )

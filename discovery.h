@@ -21,6 +21,8 @@
 
 #include <vlc_common.h>
 
+#define SD_DESC "Tvheadend HTSP Discovery"
+
 int OpenSD(vlc_object_t *obj);
 void CloseSD(vlc_object_t *obj);
 
