@@ -778,6 +778,10 @@ bool ParseSubscriptionStart(demux_t *demux, HtsMessage &msg)
         {
             es_format_Init(fmt, VIDEO_ES, VLC_CODEC_H264);
         }
+        else if(type == "HEVC")
+        {
+            es_format_Init(fmt, VIDEO_ES, VLC_CODEC_HEVC);
+        }
         else if(type == "DVBSUB")
         {
             es_format_Init(fmt, SPU_ES, VLC_CODEC_DVBS);
