@@ -43,6 +43,20 @@ struct tmp_channel
     std::list<std::string> tags;
 };
 
+struct recording
+{
+    uint32_t rid;
+    uint32_t rchannel;
+    uint64_t rdataSize;
+    uint64_t rstart;
+    std::string rtitle;
+    std::string rpath;
+    std::string rticket;
+    std::string rurl;
+    std::string rdesc;
+    input_item_t *ritem;
+};
+
 struct services_discovery_sys_t : public sys_common_t
 {
     services_discovery_sys_t()
@@ -50,7 +64,6 @@ struct services_discovery_sys_t : public sys_common_t
     {}
 
     vlc_thread_t thread;
-    std::unordered_map<uint32_t, tmp_channel> channelMap;
     bool disconnect;
 };
 
@@ -153,6 +166,24 @@ bool ConnectSD(services_discovery_t *sd)
     return res;
 }
 
+std::string getTicket(services_discovery_t *sd, uint32_t rid)
+{
+    services_discovery_sys_t *sys = sd->p_sys;
+    HtsMap map;
+    map.setData("method", "getTicket");
+    map.setData("dvrId", rid);
+
+    HtsMessage m = ReadResult(sd, sys, map.makeMsg());
+    if(!m.isValid())
+    {
+        msg_Err(sd, "No valid response");
+        return "INVALID";
+    }
+    msg_Dbg(sd, "### Ticket obtained: %s", m.getRoot()->getStr("ticket").c_str());
+    return m.getRoot()->getStr("ticket").c_str();
+}
+
+
 bool GetChannels(services_discovery_t *sd)
 {
     services_discovery_sys_t *sys = sd->p_sys;
@@ -164,6 +195,9 @@ bool GetChannels(services_discovery_t *sd)
 
     std::list<uint32_t> channelIds;
     std::unordered_map<uint32_t, tmp_channel> channels;
+
+    std::list<uint32_t> recordingIds;
+    std::unordered_map<uint32_t, recording> recordings;
 
     HtsMessage m;
     while((m = ReadMessage(sd, sys)).isValid())
@@ -238,6 +272,40 @@ bool GetChannels(services_discovery_t *sd)
             for(uint32_t i = 0; i < chList->count(); ++i)
                 channels[chList->getData(i)->getU32()].tags.push_back(tagName);
         }
+
+        else if(method == "dvrEntryAdd" || method == "dvrEntryUpdate")
+        {
+            if(!m.getRoot()->contains("id"))
+                continue;
+
+            uint32_t rid = m.getRoot()->getU32("id");
+            msg_Dbg(sd, "### Processing a recording with ID: %d", rid);
+
+            recordings[rid].rid = rid;
+            recordings[rid].rchannel = m.getRoot()->getU32("channel");
+            recordings[rid].rstart = m.getRoot()->getS64("start");
+            recordings[rid].rtitle = m.getRoot()->getStr("title");
+            recordings[rid].rpath = m.getRoot()->getStr("path");
+            recordings[rid].rticket = getTicket(sd, rid);
+            recordings[rid].rdesc = m.getRoot()->getStr("description");
+
+            if(recordings[rid].rpath.empty())
+            {
+                msg_Dbg(sd, "### Recording path is empty, perhaps some bug, skipping...");
+                continue;
+            }
+
+            std::ostringstream ossRecUrl;
+            ossRecUrl << "http://";
+            char *host = var_GetString(sd, CFG_PREFIX"host");
+            ossRecUrl << host << ":9981/dvrfile/" << rid;
+            ossRecUrl << "?ticket=" << recordings[rid].rticket;
+            recordings[rid].rurl = ossRecUrl.str();
+
+            recordings[rid].rdataSize = m.getRoot()->getS64("dataSize");
+
+            recordingIds.push_back(rid);
+        }
     }
 
     channelIds.sort([&](const uint32_t &first, const uint32_t &second) {
@@ -249,7 +317,7 @@ bool GetChannels(services_discovery_t *sd)
         tmp_channel ch = channels[channelIds.front()];
         channelIds.pop_front();
 
-        msg_Dbg(sd, "Adding channel %s\n", ch.name.c_str());
+        msg_Dbg(sd, "Adding channel %s", ch.name.c_str());
 
         ch.item = input_item_New(ch.url.c_str(), ch.name.c_str());
 
@@ -259,15 +327,50 @@ bool GetChannels(services_discovery_t *sd)
         input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
 
         ch.item->i_type = ITEM_TYPE_STREAM;
+        // Add 'All Channels' on top of playlist categories
+        services_discovery_AddItemCat(sd, ch.item, "All Channels");
+
         for(std::string tag: ch.tags)
             services_discovery_AddItemCat(sd, ch.item, tag.c_str());
+    }
 
+    // Newest first and on top of the list
+    recordingIds.sort([&](const uint64_t &first, const uint64_t &second) {
+        return recordings[first].rstart > recordings[second].rstart;
+    });
 
-        services_discovery_AddItemCat(sd, ch.item, "All Channels");
-        
+    while(recordingIds.size() > 0)
+    {
+        recording rec = recordings[recordingIds.front()];
+        recordingIds.pop_front();
 
-        sys->channelMap[ch.cid] = ch;
-        
+        msg_Dbg(sd, "### Adding recording %s, %s", rec.rtitle.c_str(), rec.rurl.c_str());
+        rec.ritem = input_item_New(rec.rurl.c_str(), rec.rtitle.c_str());
+
+        if(unlikely(rec.ritem == 0))
+            return false;
+
+        rec.ritem->i_type = ITEM_TYPE_STREAM;
+
+        time_t recTime = rec.rstart;
+        struct tm *timeinfo;
+        timeinfo = localtime(&recTime);
+        char timebuf[28];
+        // Allow sorting by date column in VLC UI
+        strftime(timebuf, 28, "%Y%m%d, %R %a", timeinfo);
+        input_item_SetMeta(rec.ritem, vlc_meta_Date, timebuf);
+
+        std::ostringstream ossFilePath;
+        ossFilePath << "File path: " << rec.rpath;
+        input_item_SetMeta(rec.ritem, vlc_meta_Description, ossFilePath.str().c_str());
+
+        std::ostringstream ossSizeMB;
+        ossSizeMB << int (rec.rdataSize/1024/1024) << " MB";
+        input_item_SetMeta(rec.ritem, vlc_meta_TrackNumber, ossSizeMB.str().c_str());
+
+        input_item_SetMeta(rec.ritem, vlc_meta_Album, rec.rdesc.c_str());
+
+        services_discovery_AddItemCat(sd, rec.ritem, "_Recordings");
     }
 
     return true;
@@ -332,11 +435,9 @@ void CloseSD(vlc_object_t *obj)
     if(!sys)
         return;
 
-
     vlc_cancel(sys->thread);
     vlc_join(sys->thread, 0);
 
- 
     delete sys;
     sys = sd->p_sys = 0;
 }
