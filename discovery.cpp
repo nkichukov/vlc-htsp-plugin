@@ -40,6 +40,7 @@ struct tmp_channel
     std::string url;
     std::string cicon;
     input_item_t *item;
+    input_item_t *item_allcat;
     std::list<std::string> tags;
 };
 
@@ -319,17 +320,20 @@ bool GetChannels(services_discovery_t *sd)
 
         msg_Dbg(sd, "Adding channel %s", ch.name.c_str());
 
-        ch.item = input_item_New(ch.url.c_str(), ch.name.c_str());
+        // Add 'All Channels' on top of playlist categories
+        ch.item_allcat = input_item_New(ch.url.c_str(), ch.name.c_str());
+        if(unlikely(ch.item_allcat == 0))
+            return false;
+        ch.item_allcat->i_type = ITEM_TYPE_STREAM;
+        input_item_SetArtworkURL(ch.item_allcat, ch.cicon.c_str());
+        services_discovery_AddItemCat(sd, ch.item_allcat, "All Channels");
 
+        // Add channels to their respective categories
+        ch.item = input_item_New(ch.url.c_str(), ch.name.c_str());
         if(unlikely(ch.item == 0))
             return false;
-
         input_item_SetArtworkURL(ch.item, ch.cicon.c_str());
-
         ch.item->i_type = ITEM_TYPE_STREAM;
-        // Add 'All Channels' on top of playlist categories
-        services_discovery_AddItemCat(sd, ch.item, "All Channels");
-
         for(std::string tag: ch.tags)
             services_discovery_AddItemCat(sd, ch.item, tag.c_str());
     }
